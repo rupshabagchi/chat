@@ -1,7 +1,11 @@
 import os
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import openai
+
+# Load environment variables from the .env file
+load_dotenv()
 
 # Initialize the Flask app
 app = Flask(__name__)
@@ -9,6 +13,15 @@ app = Flask(__name__)
 # Enable CORS for all origins
 CORS(app, resources={r'/*' : {'origins': ['http://localhost:5173']}})
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+
+# Set up OpenAI API key and endpoint (get from Azure Portal)
+openai.api_key = os.getenv("api_key")
+openai.api_base = os.getenv("api_base")
+openai.api_type = os.getenv("api_type")
+openai.api_version = os.getenv("api_version")
+deployment_name=os.getenv("deployment_name")
+
 
 # Define a route for your chatbot endpoint
 @app.route("/chat", methods=["POST"])
@@ -22,14 +35,14 @@ def chat():
 
     try:
         # Send user input to OpenAI via Azure API
-        response = "hello" #openai.Completion.create(
-           #engine=deployment_name, prompt=start_phrase, max_tokens=10
-        #)
+        response = openai.Completion.create(
+           engine=deployment_name, prompt=start_phrase, max_tokens=10
+        )
 
         # Extract the response text from OpenAI
-        #answer = response.choices[0].text.strip()
+        answer = response.choices[0].text.strip()
 
-        return jsonify({"response": response})
+        return jsonify({"response": answer})
 
     except Exception as e:
         return jsonify({"error": e}), 500

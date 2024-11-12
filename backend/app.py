@@ -1,0 +1,38 @@
+import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import openai
+
+# Initialize the Flask app
+app = Flask(__name__)
+
+# Enable CORS for all origins
+CORS(app, resources={r'/*' : {'origins': ['http://localhost:5173']}})
+app.config['CORS_HEADERS'] = 'Content-Type'
+
+# Define a route for your chatbot endpoint
+@app.route("/chat", methods=["POST"])
+def chat():
+    user_message = request.json.get("message")
+    print(user_message)
+    start_phrase = 'Respond in a pirate accent.'
+
+    if not user_message:
+        return jsonify({"error": "No message provided"}), 400
+
+    try:
+        # Send user input to OpenAI via Azure API
+        response = "hello" #openai.Completion.create(
+           #engine=deployment_name, prompt=start_phrase, max_tokens=10
+        #)
+
+        # Extract the response text from OpenAI
+        #answer = response.choices[0].text.strip()
+
+        return jsonify({"response": response})
+
+    except Exception as e:
+        return jsonify({"error": e}), 500
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)

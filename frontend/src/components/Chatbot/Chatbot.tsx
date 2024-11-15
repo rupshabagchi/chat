@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { DefaultButton, TextField, Stack, StackItem } from "@fluentui/react";
+import { PrimaryButton, TextField, Stack, StackItem } from "@fluentui/react";
 import { UserChatMessage } from '../UserChatMsg/UserChatMsg';
 import { Answer } from '../Answer/Answer';
+import AudioRecorder from '../AudioRecorder/AudioRecorder';
 import { Chat, UserRoles } from "../../types/types"
 import styles from "./Chatbot.module.css";
 
@@ -16,10 +17,46 @@ const Chatbot = () => {
     const [chatHistory, setChatHistory] = useState<Chat[]>(assistantInitialMessage);
     const [loading, setLoading] = useState<boolean>(false);
 
+    const [transcription, setTranscription] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+
+    const handleRecordingComplete = async (audioURL: string) => {
+        setLoading(true);
+        setError(null);
+        setTranscription(null);
+
+        try {
+            // Fetch the audio file as a Blob
+            const response = await fetch(audioURL);
+            const audioBlob = await response.blob();
+
+            // Prepare form data
+            const formData = new FormData();
+            formData.append("audio", audioBlob, "audio.wav");
+
+            // Send the Blob to the Flask API
+            const apiResponse = await fetch("http://localhost:5000/speech-to-text", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!apiResponse.ok) {
+                throw new Error(`Server error: ${apiResponse.statusText}`);
+            }
+
+            const data = await apiResponse.json();
+            setTranscription(data.text);
+        } catch (err) {
+            console.error("Error calling speech-to-text API:", err);
+            setError("Failed to transcribe the audio. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSendMessage = async () => {
         if (!message.trim()) return;
-
-        setLoading(true);
 
         try {
             const response = await fetch('http://localhost:5000/chat', {
@@ -65,18 +102,30 @@ const Chatbot = () => {
                 ))}
             </div>
 
-            <Stack horizontal>
+            <Stack horizontal style={{ marginLeft: "30px"}}>
                 <StackItem>
                     <TextField
                         value={message}
                         onChange={(e) => setMessage((e.target as HTMLInputElement).value)}
                         placeholder="Type a message..."
+                        style={{ width: "500px" }}
                     />
                 </StackItem>
                 <StackItem>
-                    <DefaultButton onClick={handleSendMessage} disabled={loading}>
-                        {loading ? 'Sending...' : 'Send'}
-                    </DefaultButton>
+                    <PrimaryButton onClick={handleSendMessage} disabled={loading} style={{ margin: "0 10px 0 10px"}}>
+                        Send
+                    </PrimaryButton>
+                </StackItem>
+                <StackItem>
+                    <AudioRecorder onRecordingComplete={handleRecordingComplete} />
+                    {loading && <p>Processing your audio...</p>}
+                    {error && <p style={{ color: "red" }}>{error}</p>}
+                    {transcription && (
+                        <div>
+                            <h3>Transcription:</h3>
+                            <p>{transcription}</p>
+                        </div>
+                    )}
                 </StackItem>
             </Stack>
         </div>

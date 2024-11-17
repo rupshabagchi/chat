@@ -1,8 +1,10 @@
 import os
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 import openai
+from pydub import AudioSegment
+import io
 import speech_recognition as sr
 
 
@@ -26,9 +28,6 @@ deployment_name=os.getenv("deployment_name")
 
 AZURE_SPEECH_KEY = "DNUb3KJSrfai4w3UMoJ5MGSFBnOVhNKPiFH5s04VxGMBwqHb700ZJQQJ99AKACYeBjFXJ3w3AAAYACOGr9sF"
 AZURE_REGION= "eastus"
-
-# Initialize the recognizer
-recognizer = sr.Recognizer()
 
 @app.route("/")
 def not_found():
@@ -58,8 +57,16 @@ def chat():
         return jsonify({"error": e}), 500
 
 
+def preprocess_audio(audio_file):
+    print("audio file", audio_file)
+    audio = AudioSegment.from_file(audio_file)  # Load the audio
+    audio = audio.set_frame_rate(16000).set_channels(1)  # Standardize frame rate and channels
+    processed_audio = io.BytesIO()
+    audio.export(processed_audio, format="wav")  # Export as WAV
+    processed_audio.seek(0)
+    return processed_audio
+
 @app.route("/speech-to-text", methods=["POST"])
-@cross_origin()  # Explicitly add CORS to this route as well
 def speech_to_text():
     try:
         if 'audio' not in request.files:
@@ -67,17 +74,25 @@ def speech_to_text():
 
         audio_file = request.files['audio']
 
+        # Initialize the recognizer
+        recognizer = sr.Recognizer()
 
+        processed_audio = preprocess_audio(audio_file)
         # Use SpeechRecognition to recognize speech from the audio file
-        with sr.AudioFile(audio_file) as source:
+        with sr.AudioFile(processed_audio) as source:
             audio_data = recognizer.record(source)
-            print(audio_data)
+            print("comes here as well", audio_data)
             text = recognizer.recognize_google(audio_data)  # Using Google Web Speech API
+            print("Recognized speech ", text)
 
         return jsonify({"text": text})
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except sr.WaitTimeoutError:
+        return jsonify({"error": "Speech recognition timed out"}), 504
+    except sr.UnknownValueError:
+        return jsonify({"error": "Could not understand audio"}), 400
+    except sr.RequestError as e:
+        return jsonify({"error": f"Google Speech API request failed: {e}"}), 500
 
 
 if __name__ == "__main__":

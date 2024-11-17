@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PrimaryButton, TextField, Stack, StackItem } from "@fluentui/react";
+import { TextField, Stack, StackItem, DefaultButton } from "@fluentui/react";
 import { UserChatMessage } from '../UserChatMsg/UserChatMsg';
 import { Answer } from '../Answer/Answer';
 import AudioRecorder from '../AudioRecorder/AudioRecorder';
@@ -11,6 +11,8 @@ const assistantQuestion = "How may I help you?";
 const assistantInitialMessage = [
     { role: UserRoles.Assistant, content: { response: assistantQuestion } }
 ];
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 const Chatbot = () => {
     const [message, setMessage] = useState<string>('');
@@ -29,24 +31,19 @@ const Chatbot = () => {
         try {
             // Fetch the audio file as a Blob
             const response = await fetch(audioURL);
+            await sleep(2000);
             const audioBlob = await response.blob();
 
             // Prepare form data
             const formData = new FormData();
-            formData.append("audio", audioBlob, "audio.wav");
+            formData.append("audio", audioBlob);
 
-            // Send the Blob to the Flask API
-            const apiResponse = await fetch("http://localhost:5000/speech-to-text", {
+            // Send the Blob to API
+            await fetch("http://localhost:5000/speech-to-text", {
                 method: "POST",
                 body: formData,
-            });
-
-            if (!apiResponse.ok) {
-                throw new Error(`Server error: ${apiResponse.statusText}`);
-            }
-
-            const data = await apiResponse.json();
-            setTranscription(data.text);
+            }).then(apiResponse => apiResponse.json())
+                .then(data => setTranscription(data.text));
         } catch (err) {
             console.error("Error calling speech-to-text API:", err);
             setError("Failed to transcribe the audio. Please try again.");
@@ -59,22 +56,21 @@ const Chatbot = () => {
         if (!message.trim()) return;
 
         try {
-            const response = await fetch('http://localhost:5000/chat', {
+            await fetch('http://localhost:5000/chat', {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({ message })
-            });
-
-            const data = await response.json();
-
-            // Add user and bot messages to the chat history
-            setChatHistory([
-                ...chatHistory,
-                { role: UserRoles.User, content: { response: message } },
-                { role: UserRoles.Assistant, content: data },
-            ]);
+            }).then((response) => response.json())
+                .then((data) => {
+                    // Add user and bot messages to the chat history
+                    setChatHistory([
+                        ...chatHistory,
+                        { role: UserRoles.User, content: { response: message } },
+                        { role: UserRoles.Assistant, content: data },
+                    ]);
+                });
         } catch (error) {
             console.error("Error is the following:", error);
         } finally {
@@ -102,7 +98,7 @@ const Chatbot = () => {
                 ))}
             </div>
 
-            <Stack horizontal style={{ marginLeft: "30px"}}>
+            <Stack horizontal style={{ marginLeft: "30px" }}>
                 <StackItem>
                     <TextField
                         value={message}
@@ -112,9 +108,9 @@ const Chatbot = () => {
                     />
                 </StackItem>
                 <StackItem>
-                    <PrimaryButton onClick={handleSendMessage} disabled={loading} style={{ margin: "0 10px 0 10px"}}>
+                    <DefaultButton onClick={handleSendMessage} disabled={loading} style={{ margin: "0 10px 0 10px" }}>
                         Send
-                    </PrimaryButton>
+                    </DefaultButton>
                 </StackItem>
                 <StackItem>
                     <AudioRecorder onRecordingComplete={handleRecordingComplete} />

@@ -26,9 +26,6 @@ openai.api_type = os.getenv("api_type")
 openai.api_version = os.getenv("api_version")
 deployment_name=os.getenv("deployment_name")
 
-AZURE_SPEECH_KEY = "DNUb3KJSrfai4w3UMoJ5MGSFBnOVhNKPiFH5s04VxGMBwqHb700ZJQQJ99AKACYeBjFXJ3w3AAAYACOGr9sF"
-AZURE_REGION= "eastus"
-
 @app.route("/")
 def not_found():
     return "error: route not found", 404

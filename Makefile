@@ -7,9 +7,9 @@ endif
 install-backend:
 	pip install -r requirements.txt
 
-.PHONY: install-frontend
-install-frontend:
-	cd frontend && npm install
+.PHONY: run-frontend
+run-frontend:
+	cd frontend && npm install && npm run dev
 
 .PHONY: start-backend
 start-backend:
@@ -18,6 +18,6 @@ start-backend:
 	python app.py
 
 .PHONY: lint-backend
-start-backend:
+lint-backend:
 	cd backend && \
 	python -m flake8 backend/

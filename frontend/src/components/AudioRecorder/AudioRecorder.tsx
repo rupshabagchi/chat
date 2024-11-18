@@ -44,7 +44,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete }) =>
     };
 
     return (
-        <div>
+        <>
             <DefaultButton
                 onClick={startRecording}
                 disabled={recording}
@@ -69,12 +69,12 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onRecordingComplete }) =>
             </DefaultButton>
 
             {audioURL && (
-                <div>
+                <div style={{ marginTop: "20px"}}>
                     <h4>Recorded Audio:</h4>
                     <audio controls src={audioURL}></audio>
                 </div>
             )}
-        </div>
+        </>
     );
 };
 

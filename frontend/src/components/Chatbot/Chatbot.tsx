@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { TextField, Stack, StackItem, DefaultButton } from "@fluentui/react";
+import { useState, useEffect } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { TextField, Stack, StackItem, DefaultButton, Toggle } from "@fluentui/react";
 import { UserChatMessage } from '../UserChatMsg/UserChatMsg';
 import { Answer } from '../Answer/Answer';
 import AudioRecorder from '../AudioRecorder/AudioRecorder';
@@ -14,14 +15,37 @@ const assistantInitialMessage = [
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+const socket: Socket = io('http://localhost:5000');
+
 const Chatbot = () => {
     const [message, setMessage] = useState<string>('');
+    // const [messages, setMessages] = useState<string[]>([]);
     const [chatHistory, setChatHistory] = useState<Chat[]>(assistantInitialMessage);
-    const [loading, setLoading] = useState<boolean>(false);
+    const [loading, setLoading] = useState<boolean>(true);
 
     const [transcription, setTranscription] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [enableGenAI, setEnableGenAI] = useState<boolean>(false)
 
+
+    useEffect(() => {
+        // Listen for messages from the server
+        socket.on('receive_message', () => {
+            //setMessages((prevMessages) => [...prevMessages, newMessage]);
+        });
+
+        // Cleanup the socket connection on unmount
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
+
+    const sendHardCodedMessage = () => {
+        if (message.trim()) {
+            socket.emit('send_message', message);
+            setMessage('');
+        }
+    };
 
     const handleRecordingComplete = async (audioURL: string) => {
         setLoading(true);
@@ -54,33 +78,36 @@ const Chatbot = () => {
 
     const handleSendMessage = async () => {
         if (!message.trim()) return;
-
-        try {
-            await fetch('http://localhost:5000/chat', {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ message })
-            }).then((response) => response.json())
-                .then((data) => {
-                    // Add user and bot messages to the chat history
-                    setChatHistory([
-                        ...chatHistory,
-                        { role: UserRoles.User, content: { response: message } },
-                        { role: UserRoles.Assistant, content: data },
-                    ]);
-                });
-        } catch (error) {
-            console.error("Error is the following:", error);
-        } finally {
-            setMessage('');
-            setLoading(false);
+        if (enableGenAI) {
+            try {
+                await fetch('http://localhost:5000/chat-openai', {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ message })
+                }).then((response) => response.json())
+                    .then((data) => {
+                        // Add user and bot messages to the chat history
+                        setChatHistory([
+                            ...chatHistory,
+                            { role: UserRoles.User, content: { response: message } },
+                            { role: UserRoles.Assistant, content: data },
+                        ]);
+                    });
+            } catch (error) {
+                console.error("Error is the following:", error);
+            } finally {
+                setMessage('');
+                setLoading(false);
+            }
+        } else {
+            sendHardCodedMessage();
         }
     };
 
     return (
-        <div className="chatbot">
+        <div className="chatbot" style={{ marginLeft: "30px"}}>
             <div className="chat-history">
                 {chatHistory.map((answer, index) => (
                     <div key={index}>
@@ -112,6 +139,11 @@ const Chatbot = () => {
                         Send
                     </DefaultButton>
                 </StackItem>
+                <StackItem style={{ marginLeft: "20px"}}>
+                    <Toggle label="Enable genAI chat" inlineLabel defaultChecked onText="On" offText="Off" onChange={(e: React.MouseEvent<HTMLElement>, checked?: boolean) => setEnableGenAI(checked ?? false)} />
+                </StackItem>
+            </Stack>
+            <Stack style={{ marginLeft: "30px", marginTop: "40px" }}>
                 <StackItem>
                     <AudioRecorder onRecordingComplete={handleRecordingComplete} />
                     {loading && <p>Processing your audio...</p>}

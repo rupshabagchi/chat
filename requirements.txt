@@ -8,3 +8,4 @@ pytest-flask
 python-dotenv==1.0.1
 flake8
 SpeechRecognition
+flask-socketio

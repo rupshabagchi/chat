@@ -135,7 +135,7 @@ const Chatbot = () => {
                     />
                 </StackItem>
                 <StackItem>
-                    <DefaultButton onClick={handleSendMessage} disabled={loading} style={{ margin: "0 10px 0 10px" }}>
+                    <DefaultButton onClick={handleSendMessage} style={{ margin: "0 10px 0 10px" }}>
                         Send
                     </DefaultButton>
                 </StackItem>
